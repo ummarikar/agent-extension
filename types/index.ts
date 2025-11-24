@@ -12,18 +12,12 @@ export interface ToolResult {
   isError?: boolean;
 }
 
-export interface LinkedInCredentials {
-  email: string;
-  password: string;
-}
-
 export interface BrightDataConfig {
   apiKey: string;
   zone?: string;
 }
 
 export type MessageType =
-  | 'LINKEDIN_LOGIN'
   | 'GET_COMPANY_ID'
   | 'GET_CONNECTIONS'
   | 'SCRAPE_HTML'

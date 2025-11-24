@@ -1,5 +1,5 @@
 import type { ExtensionMessage, ExtensionResponse } from '../types';
-import { LinkedInParser, waitForSelector } from '../utils/linkedin';
+import { LinkedInParser } from '../utils/linkedin';
 
 export default defineContentScript({
   matches: ['*://*.linkedin.com/*'],
@@ -22,10 +22,6 @@ export default defineContentScript({
             let response: ExtensionResponse;
 
             switch (message.type) {
-              case 'LINKEDIN_LOGIN':
-                response = await handleLogin(message.payload);
-                break;
-
               case 'GET_COMPANY_ID':
                 response = await handleGetCompanyId();
                 break;
@@ -72,87 +68,6 @@ export default defineContentScript({
     );
   },
 });
-
-async function handleLogin(credentials: {
-  email: string;
-  password: string;
-}): Promise<ExtensionResponse> {
-  try {
-    // Check if we're on the login page
-    if (!window.location.href.includes('linkedin.com')) {
-      return {
-        success: false,
-        error: 'Not on LinkedIn login page',
-      };
-    }
-
-    // Wait for login form
-    const usernameInput = (await waitForSelector(
-      'input#username',
-      60000
-    )) as HTMLInputElement;
-    const passwordInput = (await waitForSelector(
-      'input#password',
-      60000
-    )) as HTMLInputElement;
-
-    // Fill in credentials
-    usernameInput.value = credentials.email;
-    passwordInput.value = credentials.password;
-
-    // Dispatch input events to trigger React/Angular change detection
-    usernameInput.dispatchEvent(new Event('input', { bubbles: true }));
-    passwordInput.dispatchEvent(new Event('input', { bubbles: true }));
-
-    // Wait a bit for any animations/JS
-    await new Promise((resolve) => setTimeout(resolve, 2000));
-
-    // Click sign in button
-    const submitButton = document.querySelector(
-      'button[type="submit"]'
-    ) as HTMLButtonElement;
-
-    if (!submitButton) {
-      return {
-        success: false,
-        error: 'Submit button not found',
-      };
-    }
-
-    submitButton.click();
-
-    // Wait for navigation
-    await new Promise((resolve) => setTimeout(resolve, 5000));
-
-    // Check if login was successful
-    const currentUrl = window.location.href;
-
-    if (currentUrl.includes('feed') || currentUrl.includes('mynetwork')) {
-      return {
-        success: true,
-        data: { message: 'Successfully logged in' },
-      };
-    } else if (
-      currentUrl.includes('challenge') ||
-      currentUrl.includes('checkpoint')
-    ) {
-      return {
-        success: false,
-        error: 'LinkedIn requires additional verification (CAPTCHA or 2FA)',
-      };
-    } else {
-      return {
-        success: false,
-        error: 'Login may have failed or requires attention',
-      };
-    }
-  } catch (error) {
-    return {
-      success: false,
-      error: error instanceof Error ? error.message : String(error),
-    };
-  }
-}
 
 async function handleGetCompanyId(): Promise<ExtensionResponse> {
   try {

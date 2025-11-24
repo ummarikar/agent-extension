@@ -121,27 +121,6 @@ async function getLinkedInTab(url?: string): Promise<number> {
 }
 
 /**
- * Tool: LinkedIn Login
- */
-export async function linkedinLogin(args: {
-  email: string;
-  password: string;
-}): Promise<any> {
-  try {
-    const tabId = await getLinkedInTab('https://www.linkedin.com/login');
-
-    await sendToContentScript(tabId, {
-      type: 'LINKEDIN_LOGIN',
-      payload: { email: args.email, password: args.password },
-    });
-
-    return { loggedIn: true };
-  } catch (error) {
-    return { loggedIn: false, error: String(error) };
-  }
-}
-
-/**
  * Tool: Get Company ID from Profile
  */
 export async function getCompanyIdFromProfile(args: {

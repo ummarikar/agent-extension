@@ -1,5 +1,4 @@
 import {
-  linkedinLogin,
   getCompanyIdFromProfile,
   getSchoolIdFromPage,
   getConnections,
@@ -59,22 +58,6 @@ export const LINKEDIN_AGENT_SYSTEM_PROMPT = `
         - The people you may know section may not provide all the profiles. It is important to check the connections of employees you've found so far.
     </tips>
 `;
-export const linkedInLoginTool = {
-  name: "linkedin_login",
-  description: "Log into LinkedIn with the user's account credentials",
-  inputSchema: {
-    type: "object",
-    properties: {
-      email: { type: "string", description: "LinkedIn email address" },
-      password: { type: "string", description: "LinkedIn password" },
-    },
-    required: ["email", "password"],
-  },
-  run: async (input: any) => {
-    return await linkedinLogin(input);
-  },
-};
-
 export const getCompanyIdTool = {
   name: "get_company_id_from_profile",
   description:
@@ -144,7 +127,6 @@ export const getSchoolIdTool = {
 };
 
 export const linkedInTools = [
-  linkedInLoginTool,
   getCompanyIdTool,
   getSchoolIdTool,
   getConnectionsTool,
