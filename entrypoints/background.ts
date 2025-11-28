@@ -53,7 +53,7 @@ export default defineBackground({
       }
     });
 
-    // Listen for messages from popup (for config operations)
+    // Listen for messages from side panel (for config operations)
     browser.runtime.onMessage.addListener(
       async (message, sender, sendResponse) => {
         logger.debug("Background received message:", message);
@@ -97,7 +97,7 @@ async function handleAgentQuery(prompt: string, sessionId: string) {
       config?.azureDeployment || import.meta.env.LLM_AZURE_DEPLOYMENT;
 
     if (!apiKey || !endpoint || !apiVersion || !deployment) {
-      sendMessageToPopup(sessionId, {
+      sendMessageToSidePanel(sessionId, {
         type: "error",
         content:
           "Azure OpenAI configuration incomplete. Please add all required settings (API key, endpoint, API version, deployment).",
@@ -106,7 +106,7 @@ async function handleAgentQuery(prompt: string, sessionId: string) {
     }
 
     // Send initial status
-    sendMessageToPopup(sessionId, {
+    sendMessageToSidePanel(sessionId, {
       type: "status",
       content: "Processing your request...",
     });
@@ -125,7 +125,7 @@ async function handleAgentQuery(prompt: string, sessionId: string) {
     logger.info("Bright Data Token loaded:", brightDataToken ? "Yes (length: " + brightDataToken.length + ")" : "No");
 
     if (!brightDataToken) {
-      sendMessageToPopup(sessionId, {
+      sendMessageToSidePanel(sessionId, {
         type: "error",
         content: "Bright Data token not configured. Please add BRIGHT_DATA_TOKEN to your environment variables.",
       });
@@ -195,7 +195,7 @@ async function handleAgentQuery(prompt: string, sessionId: string) {
       // Check if response has output_text (alternative format)
       if (response.output_text) {
         logger.debug({ output_text: response.output_text }, "Found output_text");
-        sendMessageToPopup(sessionId, {
+        sendMessageToSidePanel(sessionId, {
           type: "text",
           content: response.output_text,
         });
@@ -209,15 +209,15 @@ async function handleAgentQuery(prompt: string, sessionId: string) {
           logger.debug({ item }, "Processing item");
           if (item.type === "text" && item.content) {
             hasTextResponse = true;
-            logger.debug({ content: item.content }, "Sending text to popup");
-            sendMessageToPopup(sessionId, {
+            logger.debug({ content: item.content }, "Sending text to side panel");
+            sendMessageToSidePanel(sessionId, {
               type: "text",
               content: item.content,
             });
           } else if (item.type === "function_call") {
             hasToolCalls = true;
 
-            sendMessageToPopup(sessionId, {
+            sendMessageToSidePanel(sessionId, {
               type: "tool_use",
               content: `Using tool: ${item.name}`,
             });
@@ -233,7 +233,7 @@ async function handleAgentQuery(prompt: string, sessionId: string) {
                 const args = JSON.parse(item.arguments);
                 const result = await customTool.run(args);
 
-                sendMessageToPopup(sessionId, {
+                sendMessageToSidePanel(sessionId, {
                   type: "tool_result",
                   content: result,
                 });
@@ -248,7 +248,7 @@ async function handleAgentQuery(prompt: string, sessionId: string) {
                 logger.error({ error }, "Error executing tool");
                 const errorMsg = `Error executing ${item.name}: ${error}`;
 
-                sendMessageToPopup(sessionId, {
+                sendMessageToSidePanel(sessionId, {
                   type: "error",
                   content: errorMsg,
                 });
@@ -282,20 +282,20 @@ async function handleAgentQuery(prompt: string, sessionId: string) {
     }
 
     // Send completion
-    sendMessageToPopup(sessionId, {
+    sendMessageToSidePanel(sessionId, {
       type: "complete",
       content: "Task completed",
     });
   } catch (error) {
     logger.error({ error }, "Error in agent query");
-    sendMessageToPopup(sessionId, {
+    sendMessageToSidePanel(sessionId, {
       type: "error",
       content: `Error: ${error}`,
     });
   }
 }
 
-function sendMessageToPopup(sessionId: string, message: any) {
+function sendMessageToSidePanel(sessionId: string, message: any) {
   // Send message through the port
   const port = activePorts.get(sessionId);
   if (port) {
@@ -306,7 +306,7 @@ function sendMessageToPopup(sessionId: string, message: any) {
         payload: message,
       });
     } catch (error) {
-      logger.error({ error }, "Failed to send message to popup");
+      logger.error({ error }, "Failed to send message to side panel");
       activePorts.delete(sessionId);
     }
   } else {

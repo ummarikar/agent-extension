@@ -91,7 +91,7 @@ Service worker that runs in the background and handles agent execution.
 - **Purpose**: Main orchestration layer - receives queries, calls Azure OpenAI, executes tools
 - **Key functions**:
   - `handleAgentQuery()`: Processes user queries through Azure OpenAI responses API
-  - `sendMessageToPopup()`: Sends updates to the UI via port connections
+  - `sendMessageToSidePanel()`: Sends updates to the UI via port connections
 - **Agent loop**: Iterates up to 20 times, executing tools until completion
 - **When to modify**:
   - To change AI model configuration
