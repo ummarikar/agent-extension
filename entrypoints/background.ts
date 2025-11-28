@@ -1,10 +1,12 @@
 import { AzureOpenAI } from "openai";
 import { browser } from "wxt/browser";
 import {
-  LINKEDIN_AGENT_SYSTEM_PROMPT,
+  WEB_SCRAPER_SYSTEM_PROMPT,
   linkedInTools,
-} from "../agents/linkedin-scraper";
+  generalTools,
+} from "../agents/web-scraper";
 import { getConfig } from "../utils/config";
+import { logger } from "../utils/logger";
 
 // Store active ports for each session
 const activePorts = new Map<string, browser.runtime.Port>();
@@ -15,9 +17,7 @@ const sessionResponseIds = new Map<string, string>();
 export default defineBackground({
   persistent: false,
   main() {
-    console.log("LinkedIn Scraper background script loaded", {
-      id: browser.runtime.id,
-    });
+    logger.info({ id: browser.runtime.id }, "LinkedIn Scraper background script loaded");
 
     // Open side panel when extension icon is clicked
     browser.action.onClicked.addListener(async (tab) => {
@@ -28,26 +28,26 @@ export default defineBackground({
 
     // Handle port connections from side panel
     browser.runtime.onConnect.addListener((port) => {
-      console.log("Port connected:", port.name);
+      logger.debug("Port connected:", port.name);
 
       if (port.name.startsWith("agent-")) {
         const sessionId = port.name.replace("agent-", "");
         activePorts.set(sessionId, port);
 
         port.onMessage.addListener((message) => {
-          console.log("Received message on port:", message);
+          logger.debug("Received message on port:", message);
 
           if (message.type === "QUERY_AGENT") {
             handleAgentQuery(message.payload.prompt, sessionId);
           } else if (message.type === "CLEAR_SESSION") {
             // Clear the stored response ID for this session
             sessionResponseIds.delete(sessionId);
-            console.log(`Cleared session data for: ${sessionId}`);
+            logger.info(`Cleared session data for: ${sessionId}`);
           }
         });
 
         port.onDisconnect.addListener(() => {
-          console.log("Port disconnected:", sessionId);
+          logger.debug("Port disconnected:", sessionId);
           activePorts.delete(sessionId);
         });
       }
@@ -56,7 +56,7 @@ export default defineBackground({
     // Listen for messages from popup (for config operations)
     browser.runtime.onMessage.addListener(
       async (message, sender, sendResponse) => {
-        console.log("Background received message:", message);
+        logger.debug("Background received message:", message);
 
         if (message.type === "SAVE_CONFIG") {
           try {
@@ -122,6 +122,16 @@ async function handleAgentQuery(prompt: string, sessionId: string) {
     // Build tools array with MCP server and LinkedIn tools
     const brightDataToken = config?.brightDataToken || import.meta.env.BRIGHT_DATA_TOKEN;
 
+    logger.info("Bright Data Token loaded:", brightDataToken ? "Yes (length: " + brightDataToken.length + ")" : "No");
+
+    if (!brightDataToken) {
+      sendMessageToPopup(sessionId, {
+        type: "error",
+        content: "Bright Data token not configured. Please add BRIGHT_DATA_TOKEN to your environment variables.",
+      });
+      return;
+    }
+
     const tools = [
       {
         type: "mcp",
@@ -136,11 +146,17 @@ async function handleAgentQuery(prompt: string, sessionId: string) {
         description: tool.description,
         parameters: tool.inputSchema,
       })),
+      ...generalTools.map((tool: any) => ({
+        type: "function",
+        name: tool.name,
+        description: tool.description,
+        parameters: tool.inputSchema,
+      })),
     ];
 
     // Create input list that we'll add to over time
     let input: any[] = [
-      { role: "system", content: LINKEDIN_AGENT_SYSTEM_PROMPT },
+      { role: "system", content: WEB_SCRAPER_SYSTEM_PROMPT },
       { role: "user", content: prompt },
     ];
 
@@ -171,14 +187,14 @@ async function handleAgentQuery(prompt: string, sessionId: string) {
         previousResponseId = response.id;
       }
 
-      console.log(`Iteration ${iteration} response:`, JSON.stringify(response, null, 2));
+      logger.debug({ response }, `Iteration ${iteration} response`);
 
       let hasToolCalls = false;
       let hasTextResponse = false;
 
       // Check if response has output_text (alternative format)
       if (response.output_text) {
-        console.log("Found output_text:", response.output_text);
+        logger.debug({ output_text: response.output_text }, "Found output_text");
         sendMessageToPopup(sessionId, {
           type: "text",
           content: response.output_text,
@@ -188,12 +204,12 @@ async function handleAgentQuery(prompt: string, sessionId: string) {
 
       // Process the output array
       if (response.output && Array.isArray(response.output)) {
-        console.log("Processing output array:", response.output);
+        logger.debug({ output: response.output }, "Processing output array");
         for (const item of response.output) {
-          console.log("Processing item:", item);
+          logger.debug({ item }, "Processing item");
           if (item.type === "text" && item.content) {
             hasTextResponse = true;
-            console.log("Sending text to popup:", item.content);
+            logger.debug({ content: item.content }, "Sending text to popup");
             sendMessageToPopup(sessionId, {
               type: "text",
               content: item.content,
@@ -206,15 +222,16 @@ async function handleAgentQuery(prompt: string, sessionId: string) {
               content: `Using tool: ${item.name}`,
             });
 
-            // Find and execute the LinkedIn tool
-            const linkedInTool = linkedInTools.find(
+            // Find and execute the custom tool
+            const allCustomTools = [...linkedInTools, ...generalTools];
+            const customTool = allCustomTools.find(
               (t: any) => t.name === item.name
             );
 
-            if (linkedInTool) {
+            if (customTool) {
               try {
                 const args = JSON.parse(item.arguments);
-                const result = await linkedInTool.run(args);
+                const result = await customTool.run(args);
 
                 sendMessageToPopup(sessionId, {
                   type: "tool_result",
@@ -228,7 +245,7 @@ async function handleAgentQuery(prompt: string, sessionId: string) {
                   output: typeof result === 'string' ? result : JSON.stringify(result),
                 });
               } catch (error) {
-                console.error("Error executing tool:", error);
+                logger.error({ error }, "Error executing tool");
                 const errorMsg = `Error executing ${item.name}: ${error}`;
 
                 sendMessageToPopup(sessionId, {
@@ -245,7 +262,7 @@ async function handleAgentQuery(prompt: string, sessionId: string) {
               }
             } else {
               // MCP tool or unknown tool - just log it
-              console.log("Non-LinkedIn tool called:", item.name);
+              logger.debug("MCP or unknown tool called:", item.name);
             }
           }
         }
@@ -257,7 +274,7 @@ async function handleAgentQuery(prompt: string, sessionId: string) {
       }
     }
 
-    console.log("Agent query completed after", iteration, "iterations");
+    logger.info("Agent query completed after", iteration, "iterations");
 
     // Store the last response ID for this session to enable follow-up conversations
     if (previousResponseId) {
@@ -270,7 +287,7 @@ async function handleAgentQuery(prompt: string, sessionId: string) {
       content: "Task completed",
     });
   } catch (error) {
-    console.error("Error in agent query:", error);
+    logger.error({ error }, "Error in agent query");
     sendMessageToPopup(sessionId, {
       type: "error",
       content: `Error: ${error}`,
@@ -289,10 +306,10 @@ function sendMessageToPopup(sessionId: string, message: any) {
         payload: message,
       });
     } catch (error) {
-      console.error("Failed to send message to popup:", error);
+      logger.error({ error }, "Failed to send message to popup");
       activePorts.delete(sessionId);
     }
   } else {
-    console.warn("No active port for session:", sessionId);
+    logger.warn("No active port for session:", sessionId);
   }
 }

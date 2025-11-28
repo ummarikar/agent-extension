@@ -1,20 +1,16 @@
-import type { ExtensionMessage, ExtensionResponse } from '../types';
-import { LinkedInParser } from '../utils/linkedin';
+import type { ExtensionMessage, ExtensionResponse } from "../types";
+import { LinkedInParser } from "../utils/linkedin";
 
 export default defineContentScript({
-  matches: ['*://*.linkedin.com/*'],
+  matches: ["*://*.linkedin.com/*", "<all_urls>"],
 
   main() {
-    console.log('LinkedIn scraper content script loaded');
+    console.log("Web scraper content script loaded");
 
     // Listen for messages from background script
     browser.runtime.onMessage.addListener(
-      (
-        message: ExtensionMessage,
-        sender,
-        sendResponse
-      ) => {
-        console.log('Content script received message:', message);
+      (message: ExtensionMessage, sender, sendResponse) => {
+        console.log("Content script received message:", message);
 
         // Handle async operations
         (async () => {
@@ -22,26 +18,26 @@ export default defineContentScript({
             let response: ExtensionResponse;
 
             switch (message.type) {
-              case 'GET_COMPANY_ID':
+              case "GET_COMPANY_ID":
                 response = await handleGetCompanyId();
                 break;
 
-              case 'SCRAPE_HTML':
+              case "SCRAPE_HTML":
                 response = {
                   success: true,
                   data: { html: document.documentElement.outerHTML },
                 };
                 break;
 
-              case 'EXTRACT_PERSON_ID':
+              case "EXTRACT_PERSON_ID":
                 response = await handleExtractPersonId();
                 break;
 
-              case 'PARSE_CONNECTIONS':
+              case "PARSE_CONNECTIONS":
                 response = handleParseConnections(message.payload);
                 break;
 
-              case 'GET_SCHOOL_ID':
+              case "GET_SCHOOL_ID":
                 response = handleGetSchoolId();
                 break;
 
@@ -54,7 +50,7 @@ export default defineContentScript({
 
             sendResponse(response);
           } catch (error) {
-            console.error('Error handling message:', error);
+            console.error("Error handling message:", error);
             sendResponse({
               success: false,
               error: error instanceof Error ? error.message : String(error),
@@ -64,7 +60,7 @@ export default defineContentScript({
 
         // Return true to indicate we'll send response asynchronously
         return true;
-      }
+      },
     );
   },
 });
@@ -82,7 +78,7 @@ async function handleGetCompanyId(): Promise<ExtensionResponse> {
     } else {
       return {
         success: false,
-        error: 'Could not find company ID on page',
+        error: "Could not find company ID on page",
       };
     }
   } catch (error) {
@@ -106,7 +102,7 @@ async function handleExtractPersonId(): Promise<ExtensionResponse> {
     } else {
       return {
         success: false,
-        error: 'Could not find person ID on page',
+        error: "Could not find person ID on page",
       };
     }
   } catch (error) {
@@ -117,18 +113,26 @@ async function handleExtractPersonId(): Promise<ExtensionResponse> {
   }
 }
 
-function handleParseConnections(payload: { employmentStatus: 'current' | 'past' }): ExtensionResponse {
+function handleParseConnections(payload: {
+  employmentStatus: "current" | "past";
+}): ExtensionResponse {
   try {
     const { employmentStatus } = payload;
 
     // Use DOMParser to parse the current page
-    const links = document.querySelectorAll('a[data-view-name="search-result-lockup-title"]');
+    const links = document.querySelectorAll(
+      'a[data-view-name="search-result-lockup-title"]',
+    );
     console.log(`Found ${links.length} links with search-result-lockup-title`);
 
-    const connections: Array<{ name: string; profile_link: string; employment_status: string }> = [];
+    const connections: Array<{
+      name: string;
+      profile_link: string;
+      employment_status: string;
+    }> = [];
 
     links.forEach((link, index) => {
-      const href = link.getAttribute('href');
+      const href = link.getAttribute("href");
       if (!href) {
         console.log(`Link ${index + 1}: No href, skipping`);
         return;
@@ -136,12 +140,12 @@ function handleParseConnections(payload: { employmentStatus: 'current' | 'past' 
 
       // Make absolute URL if needed
       let profileLink = href;
-      if (!profileLink.startsWith('http')) {
+      if (!profileLink.startsWith("http")) {
         profileLink = `https://www.linkedin.com${profileLink}`;
       }
 
       // Get text content (automatically handles nested tags)
-      const name = link.textContent?.trim() || '';
+      const name = link.textContent?.trim() || "";
 
       console.log(`Link ${index + 1}:`, { name, profileLink });
 
@@ -175,14 +179,14 @@ function handleGetSchoolId(): ExtensionResponse {
     console.log(`Found ${links.length} links with schoolFilter`);
 
     for (const link of links) {
-      const href = link.getAttribute('href');
+      const href = link.getAttribute("href");
       if (!href) continue;
 
       // Extract school ID from schoolFilter parameter
       // Pattern: schoolFilter=%5B%22{ID}%22%5D (encoded)
       const encodedMatch = href.match(/schoolFilter=%5B%22(\d+)%22%5D/i);
       if (encodedMatch && encodedMatch[1]) {
-        console.log('Found school ID from encoded URL:', encodedMatch[1]);
+        console.log("Found school ID from encoded URL:", encodedMatch[1]);
         return {
           success: true,
           data: { schoolId: encodedMatch[1] },
@@ -192,7 +196,7 @@ function handleGetSchoolId(): ExtensionResponse {
       // Try unencoded version: schoolFilter=["ID"]
       const unencodedMatch = href.match(/schoolFilter=\["(\d+)"\]/i);
       if (unencodedMatch && unencodedMatch[1]) {
-        console.log('Found school ID from unencoded URL:', unencodedMatch[1]);
+        console.log("Found school ID from unencoded URL:", unencodedMatch[1]);
         return {
           success: true,
           data: { schoolId: unencodedMatch[1] },
@@ -202,7 +206,7 @@ function handleGetSchoolId(): ExtensionResponse {
 
     return {
       success: false,
-      error: 'Could not find school ID on page',
+      error: "Could not find school ID on page",
     };
   } catch (error) {
     return {

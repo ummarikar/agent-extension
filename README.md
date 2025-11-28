@@ -1,16 +1,19 @@
-# LinkedIn Scraper Agent
+# Web Scraper Agent
 
-An AI-powered Chrome extension that scrapes LinkedIn to find company employees and school alumni using Azure OpenAI and Bright Data MCP server.
+An AI-powered Chrome extension for general web scraping and data extraction, with specialized capabilities for LinkedIn profile discovery. Built using Azure OpenAI and Bright Data MCP server.
 
 ## Overview
 
-This browser extension provides an intelligent agent that can automatically discover and collect LinkedIn profiles of people associated with companies or schools. It uses Azure OpenAI's responses API with tool calling to orchestrate web scraping, navigation, and data extraction across LinkedIn pages.
+This browser extension provides an intelligent agent that can scrape any website and extract structured data. It uses Azure OpenAI's responses API with tool calling to orchestrate web scraping, navigation, and data extraction. The agent includes specialized tools for LinkedIn tasks such as discovering company employees and school alumni.
 
 ## Features
 
-- **Autonomous LinkedIn Navigation**: Automatically navigates LinkedIn pages and extracts data
-- **Company Employee Discovery**: Finds current and past employees of any company
-- **School Alumni Discovery**: Finds alumni of any school or university
+- **General Web Scraping**: Extract data from any website using Bright Data MCP tools
+- **LinkedIn Specialization**:
+  - Discover company employees (current and past)
+  - Find school/university alumni
+  - Extract profile information
+  - Automated LinkedIn navigation
 - **Conversation Memory**: Maintains context across multiple queries in the same session
 - **Multi-turn Tool Execution**: Iteratively calls tools until task completion
 - **MCP Server Integration**: Uses Bright Data MCP server for advanced web scraping
@@ -19,12 +22,14 @@ This browser extension provides an intelligent agent that can automatically disc
 ## Installation
 
 1. **Clone the repository**
+
    ```bash
    git clone <repository-url>
    cd linkedin-scraper-ext
    ```
 
 2. **Install dependencies**
+
    ```bash
    pnpm install
    ```
@@ -32,6 +37,7 @@ This browser extension provides an intelligent agent that can automatically disc
 3. **Configure environment variables**
 
    Create `.env.development.local` and `.env.production.local` files with:
+
    ```env
    AZURE_OPENAI_API_KEY=your_azure_openai_api_key
    AZURE_API_VERSION=2025-03-01-preview
@@ -41,6 +47,7 @@ This browser extension provides an intelligent agent that can automatically disc
    ```
 
 4. **Build the extension**
+
    ```bash
    pnpm run build
    ```
@@ -55,10 +62,12 @@ This browser extension provides an intelligent agent that can automatically disc
 
 1. Click the extension icon in Chrome toolbar to open the side panel
 2. Type your query, for example:
-   - "Get me all the employees of Anthropic"
-   - "Find alumni from Stanford University"
-3. The agent will autonomously navigate LinkedIn and collect profiles
-4. Results are displayed in the chat with profile links
+   - **General scraping**: "Scrape product prices from example-store.com"
+   - **LinkedIn employees**: "Get me all the employees of Anthropic"
+   - **LinkedIn alumni**: "Find alumni from Stanford University"
+   - **Web data extraction**: "Extract all blog post titles from example-blog.com"
+3. The agent will autonomously use appropriate tools to complete your request
+4. Results are displayed in the chat with relevant links and structured data
 5. You can ask follow-up questions in the same session
 
 ## Project Structure
@@ -66,7 +75,9 @@ This browser extension provides an intelligent agent that can automatically disc
 ### Core Files
 
 #### `wxt.config.ts`
+
 Configuration file for the WXT extension framework.
+
 - **Purpose**: Defines manifest permissions, environment variables, and build settings
 - **Key sections**:
   - `manifest`: Chrome extension permissions and side panel configuration
@@ -74,7 +85,9 @@ Configuration file for the WXT extension framework.
 - **When to modify**: When adding new permissions or environment variables
 
 #### `entrypoints/background.ts`
+
 Service worker that runs in the background and handles agent execution.
+
 - **Purpose**: Main orchestration layer - receives queries, calls Azure OpenAI, executes tools
 - **Key functions**:
   - `handleAgentQuery()`: Processes user queries through Azure OpenAI responses API
@@ -86,19 +99,23 @@ Service worker that runs in the background and handles agent execution.
   - To modify tool execution logic
   - To change max iterations or token limits
 
-#### `agents/linkedin-scraper.ts`
+#### `agents/web-scraper.ts`
+
 Defines the AI agent's behavior, system prompt, and available tools.
+
 - **Purpose**: Contains agent instructions and tool definitions
 - **Key exports**:
-  - `LINKEDIN_AGENT_SYSTEM_PROMPT`: Instructions that guide the agent's behavior
-  - `linkedInTools`: Array of custom tools (get_company_id, get_school_id, get_connections)
+  - `WEB_SCRAPER_SYSTEM_PROMPT`: Instructions that guide the agent's behavior for general web scraping and LinkedIn-specific tasks
+  - `linkedInTools`: Array of LinkedIn-specific custom tools (get_company_id, get_school_id, get_connections)
 - **When to modify**:
   - **To change agent behavior**: Edit the system prompt to change how it approaches tasks
-  - **To add new tools**: Define new tool objects and add to `linkedInTools` array
+  - **To add new tools**: Define new tool objects and add to appropriate tools array
   - **To change tool parameters**: Modify `inputSchema` for existing tools
 
 #### `utils/tools.ts`
+
 Implements the actual functionality behind each agent tool.
+
 - **Purpose**: Contains the logic that executes when the agent calls a tool
 - **Key functions**:
   - `getCompanyIdFromProfile()`: Extracts company ID from LinkedIn profile pages
@@ -111,7 +128,9 @@ Implements the actual functionality behind each agent tool.
   - To modify tab management and error handling
 
 #### `entrypoints/content.ts`
+
 Content script injected into LinkedIn pages for DOM manipulation and parsing.
+
 - **Purpose**: Runs in the context of LinkedIn pages to extract data from the DOM
 - **Key functions**:
   - `handleGetCompanyId()`: Extracts company ID from page HTML
@@ -124,7 +143,9 @@ Content script injected into LinkedIn pages for DOM manipulation and parsing.
   - To add new DOM parsing capabilities
 
 #### `entrypoints/sidepanel/Chat.tsx`
+
 React component for the chat interface.
+
 - **Purpose**: Main UI component that users interact with
 - **Key features**:
   - Message display with different types (user, agent, system, error)
@@ -138,12 +159,16 @@ React component for the chat interface.
   - Edit message handling logic to change how responses are displayed
 
 #### `entrypoints/sidepanel/App.tsx`
+
 Root React component for the side panel.
+
 - **Purpose**: Top-level component that renders the chat interface
 - **When to modify**: To add new UI sections or components around the chat
 
 #### `utils/linkedin.ts`
+
 LinkedIn-specific parsing utilities.
+
 - **Purpose**: Contains regex patterns and parsing logic for LinkedIn data
 - **Key exports**:
   - `LinkedInParser.extractCompanyId()`: Regex-based company ID extraction
@@ -153,7 +178,9 @@ LinkedIn-specific parsing utilities.
 - **When to modify**: When LinkedIn's URL structure or page patterns change
 
 #### `types/index.ts`
+
 TypeScript type definitions.
+
 - **Purpose**: Ensures type safety across the codebase
 - **Key types**:
   - `Connection`: Structure for scraped LinkedIn profiles
@@ -164,7 +191,9 @@ TypeScript type definitions.
 ### CSS Files
 
 #### `entrypoints/sidepanel/Chat.css`
+
 Styles for the chat interface.
+
 - **When to modify UI**:
   - Change colors, fonts, spacing
   - Modify message bubble appearance
@@ -172,7 +201,9 @@ Styles for the chat interface.
   - Update animations and transitions
 
 #### `entrypoints/sidepanel/App.css`
+
 Global styles for the side panel.
+
 - **When to modify**: To change overall layout or viewport behavior
 
 ## Making Changes
@@ -180,14 +211,17 @@ Global styles for the side panel.
 ### Updating the UI
 
 1. **Change Layout/Structure**:
+
    - Edit `entrypoints/sidepanel/Chat.tsx`
    - Modify the JSX in the `return` statement
 
 2. **Change Styling**:
+
    - Edit `entrypoints/sidepanel/Chat.css` for chat-specific styles
    - Edit `entrypoints/sidepanel/App.css` for global styles
 
 3. **Add New UI Components**:
+
    - Create new `.tsx` files in `entrypoints/sidepanel/`
    - Import and use in `Chat.tsx` or `App.tsx`
 
@@ -199,25 +233,31 @@ Global styles for the side panel.
 ### Modifying the Agent
 
 1. **Change Agent Behavior**:
-   - Edit `LINKEDIN_AGENT_SYSTEM_PROMPT` in `agents/linkedin-scraper.ts`
-   - Modify instructions, examples, and output format
+
+   - Edit `WEB_SCRAPER_SYSTEM_PROMPT` in `agents/web-scraper.ts`
+   - Modify general instructions for broader capabilities
+   - Update LinkedIn-specific workflow if needed
    - Add new rules or constraints
 
 2. **Add New Tools**:
-   - Define tool object in `agents/linkedin-scraper.ts` with:
+
+   - Define tool object in `agents/web-scraper.ts` with:
      - `name`: Tool identifier
      - `description`: What the tool does
      - `inputSchema`: JSON schema for parameters
      - `run`: Async function that executes the tool
    - Implement tool logic in `utils/tools.ts`
-   - Add to `linkedInTools` array
+   - Add to `linkedInTools` array (for LinkedIn tools) or create new tools array (for other tools)
+   - Export and import the tools array in `entrypoints/background.ts`
 
 3. **Modify Existing Tools**:
-   - Change `inputSchema` in `agents/linkedin-scraper.ts` to update parameters
+
+   - Change `inputSchema` in `agents/web-scraper.ts` to update parameters
    - Update implementation in `utils/tools.ts`
    - Adjust content script handlers in `entrypoints/content.ts` if needed
 
 4. **Change Model Configuration**:
+
    - Edit `handleAgentQuery()` in `entrypoints/background.ts`
    - Modify `max_output_tokens`, iteration limits, or model parameters
    - Update environment variables for different Azure deployments

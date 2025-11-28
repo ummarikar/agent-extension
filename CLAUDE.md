@@ -18,8 +18,8 @@ pnpm run zip
 ### `entrypoints/background.ts`
 Background service worker - handles agent execution and tool orchestration. Calls Azure OpenAI responses API and manages the tool execution loop.
 
-### `agents/linkedin-scraper.ts`
-Defines the AI agent's system prompt and available tools. Modify this to change agent behavior or add new tools.
+### `agents/web-scraper.ts`
+Defines the AI agent's system prompt and available tools. Modify this to change agent behavior or add new tools. Contains general web scraping instructions and LinkedIn-specific workflows.
 
 ### `utils/tools.ts`
 Implements the actual tool functionality. Contains logic for LinkedIn navigation, tab management, and data extraction.

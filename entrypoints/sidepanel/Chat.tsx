@@ -232,7 +232,7 @@ function Chat() {
   return (
     <div className="chat-container">
       <div className="chat-header">
-        <h2>LinkedIn Scraper Agent</h2>
+        <h2>Web Scraper Agent</h2>
         <button onClick={handleClearChat} className="clear-chat-button">
           Clear Chat
         </button>
